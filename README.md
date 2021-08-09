@@ -1,2 +1,3 @@
 # dataAutoFillHelper
-協助把speedtest &amp; opensignal 資料寫到google sheets的腳本。
+說明鏈結：https://hackmd.io/@MTT/HyvA66dkK
+
