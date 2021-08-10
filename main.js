@@ -1,60 +1,31 @@
-/*
-=======================
-主運行函式
-google apps script limit
-https://docs.google.com/macros/dashboard
-gmail相關參數
-https://developers.google.com/apps-script/reference/gmail/
-=======================
-*/
-function mainFunction() {
-  //將myConfig.gs的gmail查詢式物件轉換為字串
-  var tempArray = myObj.toString(gmailQuery);
-  //查詢結果的信件集合
-  var mails = GmailApp.search(tempArray.join(" "));
-  //製造一個新工作表，並保留工作表名稱
-  var worksheetName = makeTabs();
-  for (var i = 0; i < mails.length; i++) {
-    var messages = mails[i].getMessages();
-    //有信件重複寄的話，直接取最後(新)一封(不管是寄重複，回覆信件...等等都算)
-    var j = messages.length - 1;
-    //寄件人，信件標題，寄件時間
-    var from = messages[j].getFrom();
-    var subject = messages[j].getSubject();
-    var mailDate = messages[j].getDate();
-    //信件的附加檔案
-    var attachments = messages[j].getAttachments();
-    var csvData = [];
-    var csvTitle = [];
-    var csvMailINFO = [];
-    for (var k = 0; k < attachments.length; k++) {
-      //附加檔案的filename
-      var fileName = attachments[k].getName();
-      //所有檔案儲存成陣列
-      var fileContent = attachments[k].getDataAsString();
-
-      //用附加檔案的filename，判斷要添加什麼資料到各類陣列裡
-      if (fileName.indexOf('results.csv') === 0) {
-        csvData.push(fileContent);
-        csvTitle.push(speedTestTitle);
-        csvMailINFO.push({
-          'mailForm': from,
-          'mailAttFilename': fileName,
-          'mailSubject': subject,
-          'mailDate': mailDate
-        });
-      } else if (fileName.indexOf('osm_speedtests_') === 0) {
-        csvData.push(fileContent);
-        csvTitle.push(openSignalTitle);
-        csvMailINFO.push({
-          'mailForm': from,
-          'mailAttFilename': fileName,
-          'mailSubject': subject,
-          'mailDate': mailDate
-        });
+//將map物件，轉換為array ["key:value"]，方便增加查詢條件 
+let iMap = {
+  toString: function (_obj) {
+    let iArray = [];
+    for (let i in _obj) {
+      if (_obj.hasOwnProperty(i)) {
+        iArray.push(i + ":" + _obj[i]);
       }
     }
-    //將資料陣列與其他資訊，輸出為一張完整的陣列表單，並寫入到資料表裡面
-    writeTabs(worksheetName, myCsv(csvData, csvTitle, csvMailINFO));
+    return iArray.join(" ");
+  }
+}
+
+let mailQuery = {
+  'subject': 'Speedtest 結果（CSV 匯出）'
+}
+
+function main() {
+  //取得查詢結果的陣列
+  let mails = GmailApp.search(iMap.toString(mailQuery));
+
+  //製造一個新工作表，並保留工作表名稱
+  let worksheetName = Utilities.formatDate(new Date(), 'GMT+8', 'yyyy-MM-dd_HH:mm');
+  createWorkSheet(worksheetName);
+
+  //對每一個寄件人群組的郵件進行資料提取，整理後，寫入到試算表。
+  for (const mail of mails) {
+    let iData = getMailData(mail.getMessages());
+    writeWorksheet(worksheetName, transformDataFormat(iData));
   }
 }
